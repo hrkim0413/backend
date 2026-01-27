@@ -13,7 +13,7 @@ app.use(cors());
 // mysql db정보 설정하기
 const mysql = require('mysql');
 const connection = mysql.createConnection({
-  host: 'localhost',
+  host: 'database',
   user: 'root',
   password: '1234',
   database: 'kdt'
@@ -471,4 +471,5 @@ app.get('/usercount', (req, res) => {
       res.json(result);
     }
   )
+
 })
