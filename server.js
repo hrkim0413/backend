@@ -13,7 +13,7 @@ app.use(cors());
 // mysql db정보 설정하기
 const mysql = require('mysql');
 const connection = mysql.createConnection({
-  host: 'database',
+  host: 'localhost',
   user: 'root',
   password: '1234',
   database: 'kdt'
@@ -471,5 +471,63 @@ app.get('/usercount', (req, res) => {
       res.json(result);
     }
   )
+})
 
+// [ginipet]
+// 1. 회원가입 => 아이디 중복 확인
+app.post('/check-username', (req, res) => {
+  const { username } = req.body;
+
+  const sql = 'SELECT * FROM ginipet_users WHERE username = ?';
+
+  connection.query(sql, [username], (err, result) => {
+    if (err) return res.status(500).send(err);
+
+    res.json({ exists: result.length > 0 });
+  });
+});
+
+
+// 2. 회원가입 => 입력
+app.post('/ginipet-register', async (req, res) => {
+  const { username, password, email, tel } = req.body;
+
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    const sql = `INSERT INTO ginipet_users(username, password, email, tel) VALUE(?, ?, ?, ?)`;
+
+    connection.query(sql, [username, hash, email, tel], err => {
+      if (err) return res.status(500).send(err);
+
+      res.json({ message: '회원가입 성공' });
+    }
+    )
+  } catch (err) {
+    res.status(500).send(err);
+  }
+})
+
+// 3. 로그인 => 조회
+app.post('/ginipet-login', (req, res) => {
+  const { username, password } = req.body;
+  const sql = 'SELECT * FROM ginipet_users WHERE username = ?'
+
+  connection.query(sql, [username], async (err, result) => {
+    if (err || result.length == 0) {
+      return res.status(401).json({ message: '존재하지 않는 아이디입니다.' })
+    }
+
+    // 비밀번호 검사
+    const user = result[0];
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: '비밀번호가 틀렸습니다. 확인 부탁드립니다.' })
+    }
+
+    // 토큰 생성
+    const token = jwt.sign({ id: user.id, name: user.username }, SECRET_KEY, { expiresIn: '1h' });
+    // 토큰 발급
+    res.json({ token });
+  })
 })
